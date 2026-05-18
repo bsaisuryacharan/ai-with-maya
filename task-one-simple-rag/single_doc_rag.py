@@ -1,7 +1,16 @@
 import argparse
 from pathlib import Path
+from pyexpat import model
 import numpy as np
 from sentence_transformers import SentenceTransformer
+from dotenv import load_dotenv
+import os
+import requests
+
+load_dotenv()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_URL = os.getenv("GROQ_API_URL")
+
 
 def load_document(path: str) -> str:
     return Path(path).read_text(encoding='utf-8')
@@ -9,7 +18,7 @@ def load_document(path: str) -> str:
 def chunk_text(text: str, chunk_size: int = 200):
     words = text.split()
     return [
-        " ".join( words[i:i+chunk_size] for i in range(0, len(words), chunk_size) )
+        " ".join( words[i:i+chunk_size]) for i in range(0, len(words), chunk_size) 
     ]
 
 
@@ -31,6 +40,38 @@ def retrieve_relevant_chunks(query_embedding: np.ndarray, chunk_embeddings: np.n
     top_index = np.argsort(similarities)[:top_k] # get the indices of the top k most similar chunks
     top_scores = similarities[top_index] # get the similarity scores of the top k chunks
     return top_index.tolist(), top_scores.tolist()
+
+
+def build_prompt(chunks: list[str], top_indices: list[int], question: str) -> str:
+    context_parts = []
+    for rank, index in enumerate( top_indices, start = 1 ):
+        context_parts.append(f"[Chunk {rank}: {chunks[index]}]")
+    print(context_parts)
+    context = "\n".join(context_parts)
+    prompt = (
+        "You are given CONTEXT extracted from a single document. "
+        "Answer the QUESTION using ONLY the information in the CONTEXT. "
+        "If the answer cannot be found in the CONTEXT, respond exactly: "
+        "\"I don't know based on the provided document.\" Do not use outside knowledge.\n\n"
+        f"CONTEXT:\n{context}\n\nQUESTION:\n{question}\n\n"
+        "Provide a concise answer and optionally mention which chunk(s) you used."
+    )
+    return prompt
+
+def call_groq(prompt: str, model: str="llama-3.1-8b-instant"):
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.2,
+    }
+    response = requests.post(GROQ_API_URL, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
+
 
 def main():
     # Step 1: Parse command-line arguments
@@ -61,9 +102,19 @@ def main():
     print(f"Embeddings shape: {data_embeddings.shape}")
     print(f"Top relevant chunks: {top_indices}")
     print(f"Top scores: {top_scores}")
-    print("Chunks retrieved:")
-    for i in top_indices:
-        print(f"  - {chunks[i]}")
+    # print("Chunks retrieved:")
+    # for i in top_indices:
+    #     print(f"  - {chunks[i]}")
+
+    # Step 7: Build the prompt
+    prompt = build_prompt(chunks, top_indices, args.question)
+    print("\n--- LLM Prompt (preview) ---\n")
+    print(prompt[:4000])   # show up to 4000 chars for review
+    print("\n--- end prompt preview ---\n")
+
+    # Step 8: Call the LLM
+    answer = call_groq(prompt)
+    print(f"Answer:\n{answer}")
 
 if __name__ == "__main__":
     main()
