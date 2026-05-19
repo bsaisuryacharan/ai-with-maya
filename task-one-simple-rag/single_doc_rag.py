@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+import re
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
@@ -14,10 +15,10 @@ GROQ_API_URL = os.getenv("GROQ_API_URL")
 def load_document(path: str) -> str:
     return Path(path).read_text(encoding='utf-8')
 
-def chunk_text(text: str, chunk_size: int = 200):
-    words = text.split()
+def chunk_text(text: str, chunk_size: int = 200) -> list[str]:
+    tokens = re.findall(r"\w+|[^\w\s]", text)
     return [
-        " ".join( words[i:i+chunk_size]) for i in range(0, len(words), chunk_size) 
+        " ".join(tokens[i:i + chunk_size]) for i in range(0, len(tokens), chunk_size)
     ]
 
 
@@ -31,8 +32,12 @@ def embed_query(question: str, embedder: SentenceTransformer):
 
 def retrieve_relevant_chunks(query_embedding: np.ndarray, chunk_embeddings: np.ndarray, top_k: int = 3):
     # chunk_embeddings:  (N, D), query_emb: (D, )
+    chunk_embeddings = np.asarray(chunk_embeddings)
+    if chunk_embeddings.size == 0:
+        return [], []
     if query_embedding.ndim == 2 and query_embedding.shape[0] == 1:
         query_embedding = query_embedding[0]
+    top_k = min(top_k, chunk_embeddings.shape[0])
     similarities = query_embedding @ chunk_embeddings.T # dot product which will give us the similarity between the query and each chunk
     top_index = np.argsort(-similarities)[:top_k] # get the indices of the top k most similar chunks
     top_scores = similarities[top_index] # get the similarity scores of the top k chunks
@@ -88,7 +93,7 @@ def main():
     # Step 2: Load the data
     document_text = load_document(args.document)
 
-    # Step 3: Chunk the document by whitespace-separated words (e.g., 301 words with chunk size 200 -> 2 chunks)
+    # Step 3: Chunk the document by token-like units (words + punctuation)
     chunks = chunk_text(document_text)
     
     # Step 4: Embed the chunks
@@ -99,6 +104,9 @@ def main():
 
     # Step 6: Retrieve relevant chunks
     top_indices, top_scores = retrieve_relevant_chunks(query_embedding, data_embeddings)
+    if not top_indices:
+        print("Answer:\nI don't know based on the provided document.")
+        return
 
     print("Document content:")
     print(f"Characters: {len(document_text)}")
