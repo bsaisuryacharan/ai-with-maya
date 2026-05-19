@@ -23,7 +23,6 @@ def chunk_text(text: str, chunk_size: int = 200):
 
 def embed_chunks(chunks: list[str], model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
     embedder = SentenceTransformer(model_name)
-    # embeddings means the vector representations of the text chunks, which can be used for similarity search or other downstream tasks.
     embeddings = embedder.encode(chunks, convert_to_numpy=True, normalize_embeddings=True)
     return embedder, embeddings
     
@@ -89,7 +88,7 @@ def main():
     # Step 2: Load the data
     document_text = load_document(args.document)
 
-    # Step 3: Chunk the document by words (e.g., 301 words with chunk size 200 -> 2 chunks)
+    # Step 3: Chunk the document by whitespace-separated words (e.g., 301 words with chunk size 200 -> 2 chunks)
     chunks = chunk_text(document_text)
     
     # Step 4: Embed the chunks
