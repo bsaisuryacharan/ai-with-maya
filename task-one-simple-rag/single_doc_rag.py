@@ -27,8 +27,8 @@ def embed_chunks(chunks: list[str], model_name: str = "sentence-transformers/all
     embeddings = embedder.encode(chunks, convert_to_numpy=True, normalize_embeddings=True)
     return embedder, embeddings
     
-def embed_query(question: str, model: SentenceTransformer):
-    query_embedding = model.encode([question], convert_to_numpy=True, normalize_embeddings=True)
+def embed_query(question: str, embedder: SentenceTransformer):
+    query_embedding = embedder.encode([question], convert_to_numpy=True, normalize_embeddings=True)
     return query_embedding[0]
 
 def retrieve_relevant_chunks(query_embedding: np.ndarray, chunk_embeddings: np.ndarray, top_k: int = 3):
@@ -94,10 +94,10 @@ def main():
     chunks = chunk_text(document_text)
     
     # Step 4: Embed the chunks
-    model, data_embeddings = embed_chunks(chunks)
+    embedder, data_embeddings = embed_chunks(chunks)
 
     # Step 5: Embed the query
-    query_embedding = embed_query(args.question, model)
+    query_embedding = embed_query(args.question, embedder)
 
     # Step 6: Retrieve relevant chunks
     top_indices, top_scores = retrieve_relevant_chunks(query_embedding, data_embeddings)
