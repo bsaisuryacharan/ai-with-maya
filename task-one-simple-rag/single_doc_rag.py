@@ -1,6 +1,5 @@
 import argparse
 from pathlib import Path
-from pyexpat import model
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
@@ -23,10 +22,10 @@ def chunk_text(text: str, chunk_size: int = 200):
 
 
 def embed_chunks(chunks: list[str], model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
-    model = SentenceTransformer(model_name)
+    embedder = SentenceTransformer(model_name)
     # embeddings means the vector representations of the text chunks, which can be used for similarity search or other downstream tasks.
-    embeddings = model.encode(chunks, convert_to_numpy=True, normalize_embeddings=True)
-    return model, embeddings
+    embeddings = embedder.encode(chunks, convert_to_numpy=True, normalize_embeddings=True)
+    return embedder, embeddings
     
 def embed_query(question: str, model: SentenceTransformer):
     q_model = model.encode( [question], convert_to_numpy=True, normalize_embeddings=True)
@@ -37,7 +36,7 @@ def retrieve_relevant_chunks(query_embedding: np.ndarray, chunk_embeddings: np.n
     if query_embedding.ndim == 2 and query_embedding.shape[0] == 1:
         query_embedding = query_embedding[0]
     similarities = query_embedding @ chunk_embeddings.T # dot product which will give us the similarity between the query and each chunk
-    top_index = np.argsort(similarities)[:top_k] # get the indices of the top k most similar chunks
+    top_index = np.argsort(-similarities)[:top_k] # get the indices of the top k most similar chunks
     top_scores = similarities[top_index] # get the similarity scores of the top k chunks
     return top_index.tolist(), top_scores.tolist()
 
@@ -46,7 +45,6 @@ def build_prompt(chunks: list[str], top_indices: list[int], question: str) -> st
     context_parts = []
     for rank, index in enumerate( top_indices, start = 1 ):
         context_parts.append(f"[Chunk {rank}: {chunks[index]}]")
-    print(context_parts)
     context = "\n".join(context_parts)
     prompt = (
         "You are given CONTEXT extracted from a single document. "
@@ -59,6 +57,11 @@ def build_prompt(chunks: list[str], top_indices: list[int], question: str) -> st
     return prompt
 
 def call_groq(prompt: str, model: str="llama-3.1-8b-instant"):
+    if not GROQ_API_KEY:
+        raise ValueError("Missing required environment variable: GROQ_API_KEY")
+    if not GROQ_API_URL:
+        raise ValueError("Missing required environment variable: GROQ_API_URL")
+
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json",
@@ -68,9 +71,13 @@ def call_groq(prompt: str, model: str="llama-3.1-8b-instant"):
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.2,
     }
-    response = requests.post(GROQ_API_URL, headers=headers, json=payload)
+    response = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=30)
     response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"]
+    try:
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise ValueError("Unexpected Groq API response format") from exc
 
 
 def main():
@@ -83,7 +90,7 @@ def main():
     # Step 2: Load the data
     document_text = load_document(args.document)
 
-    # Step 3: Chunk the document (length of the document in characters, and the number of chunks created Ex: 301 words and chunk size of 200 would create 2 chunks)
+    # Step 3: Chunk the document by words (e.g., 301 words with chunk size 200 -> 2 chunks)
     chunks = chunk_text(document_text)
     
     # Step 4: Embed the chunks
