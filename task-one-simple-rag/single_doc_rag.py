@@ -104,7 +104,7 @@ def main():
 
     # Step 6: Retrieve relevant chunks
     top_indices, top_scores = retrieve_relevant_chunks(query_embedding, data_embeddings)
-    if not top_indices:
+    if len(top_indices) == 0:
         print("Answer:\nI don't know based on the provided document.")
         return
 
