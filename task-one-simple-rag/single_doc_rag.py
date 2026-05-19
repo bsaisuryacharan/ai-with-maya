@@ -28,8 +28,8 @@ def embed_chunks(chunks: list[str], model_name: str = "sentence-transformers/all
     return embedder, embeddings
     
 def embed_query(question: str, embedder: SentenceTransformer):
-    query_embedding = embedder.encode([question], convert_to_numpy=True, normalize_embeddings=True)
-    return query_embedding[0]
+    query_embeddings = embedder.encode([question], convert_to_numpy=True, normalize_embeddings=True)
+    return query_embeddings[0]
 
 def retrieve_relevant_chunks(query_embedding: np.ndarray, chunk_embeddings: np.ndarray, top_k: int = 3):
     # chunk_embeddings:  (N, D), query_emb: (D, )
