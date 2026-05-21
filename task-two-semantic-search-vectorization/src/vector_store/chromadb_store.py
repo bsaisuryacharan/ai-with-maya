@@ -41,13 +41,14 @@ class ChromaDBStore(VectorStore):
         if results["ids"] and len(results["ids"]) > 0:
             documents = results.get("documents")
             for i, doc_id in enumerate(results["ids"][0]):
-                content = ""
+                metadata = results["metadatas"][0][i] or {}
+                content = metadata.get("content", "")
                 if documents and i < len(documents[0]) and documents[0][i]:
                     content = documents[0][i]
                 output.append({
                     "id": doc_id,
                     "distance": results["distances"][0][i],
-                    "metadata": results["metadatas"][0][i],
+                    "metadata": metadata,
                     "content": content
                 })
         
