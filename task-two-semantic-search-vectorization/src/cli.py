@@ -58,7 +58,9 @@ def search_command(args):
         metadata = result.get("metadata", {})
         source = metadata.get("source", "unknown")
         distance = result["distance"]
-        content = result.get("content") or metadata.get("content", "")
+        content = result.get("content") if result.get("content") is not None else metadata.get("content", "")
+        if not isinstance(content, str):
+            content = str(content)
         preview = content[:100] + ("..." if len(content) > 100 else "")
 
         print(f"{i}. [{source}] (distance: {distance:.4f})")

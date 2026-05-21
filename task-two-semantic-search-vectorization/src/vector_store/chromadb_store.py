@@ -23,7 +23,10 @@ class ChromaDBStore(VectorStore):
     def add(self, vectors: List[List[float]], metadata: List[Dict[str, Any]]) -> List[str]:
         """Add vectors with metadata to ChromaDB."""
         ids = [str(uuid4()) for _ in range(len(vectors))]
-        documents = [str(m.get("content", "")) for m in metadata]
+        documents = [
+            m.get("content", "") if isinstance(m.get("content", ""), str) else ""
+            for m in metadata
+        ]
         self.collection.add(
             embeddings=vectors,
             metadatas=metadata,
