@@ -42,7 +42,7 @@ class ChromaDBStore(VectorStore):
             documents = results.get("documents")
             for i, doc_id in enumerate(results["ids"][0]):
                 content = ""
-                if documents and len(documents) > 0 and i < len(documents[0]) and documents[0][i]:
+                if documents and i < len(documents[0]) and documents[0][i]:
                     content = documents[0][i]
                 output.append({
                     "id": doc_id,
