@@ -19,49 +19,38 @@ class RecursiveCharacterChunker(ChunkingStrategy):
         """Split text recursively on separators, preferring better boundaries."""
         if not text.strip():
             return []
-        
+
         chunks = []
-        chunk_index = 0
-        
-        def _split_text(full_text: str, separators: List[str]) -> List[str]:
-            """Recursively split on separators, trying easier splits first."""
-            separator = separators[-1]
-            
-            for sep in separators:
-                if sep in full_text:
-                    separator = sep
-                    break
-            
-            if separator:
-                splits = full_text.split(separator)
-            else:
-                splits = list(full_text)
-            
-            # Filter out empty strings
-            return [s for s in splits if s.strip()]
-        
-        splits = _split_text(text, self.separators)
-        merged = ""
-        
-        for split in splits:
-            if len(merged) + len(split) < self.chunk_size:
-                merged += split
-            else:
-                if merged.strip():
-                    chunks.append(Chunk(
-                        content=merged,
-                        source=source,
-                        chunk_index=chunk_index
-                    ))
-                    chunk_index += 1
-                merged = split
-        
-        # Add last chunk
-        if merged.strip():
-            chunks.append(Chunk(
-                content=merged,
-                source=source,
-                chunk_index=chunk_index
-            ))
-        
+        start = 0
+        text_len = len(text)
+
+        while start < text_len:
+            end = min(start + self.chunk_size, text_len)
+
+            if end < text_len:
+                for separator in self.separators:
+                    if not separator:
+                        continue
+                    split_at = text.rfind(separator, start, end)
+                    if split_at > start:
+                        end = split_at + len(separator)
+                        break
+
+            if end <= start:
+                end = min(start + self.chunk_size, text_len)
+
+            chunk_text = text[start:end]
+            if chunk_text.strip():
+                chunks.append(Chunk(
+                    content=chunk_text,
+                    source=source,
+                    chunk_index=len(chunks)
+                ))
+
+            if end >= text_len:
+                break
+
+            next_start = end - self.overlap if self.overlap > 0 else end
+            start = max(next_start, 0)
+
         return chunks

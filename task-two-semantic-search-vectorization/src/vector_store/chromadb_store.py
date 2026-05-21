@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+from uuid import uuid4
 import chromadb
 from src.vector_store.base import VectorStore
 from src.config.settings import VectorStoreConfig
@@ -21,10 +22,12 @@ class ChromaDBStore(VectorStore):
     @log_timing("vector_add")
     def add(self, vectors: List[List[float]], metadata: List[Dict[str, Any]]) -> List[str]:
         """Add vectors with metadata to ChromaDB."""
-        ids = [f"doc_{i}" for i in range(len(vectors))]
+        ids = [str(uuid4()) for _ in range(len(vectors))]
+        documents = [str(m.get("content", "")) for m in metadata]
         self.collection.add(
             embeddings=vectors,
             metadatas=metadata,
+            documents=documents,
             ids=ids
         )
         return ids
@@ -34,17 +37,21 @@ class ChromaDBStore(VectorStore):
         """Search ChromaDB for similar vectors."""
         results = self.collection.query(
             query_embeddings=[query_vector],
-            n_results=top_k
+            n_results=top_k,
+            include=["distances", "metadatas", "documents"]
         )
         
         output = []
         if results["ids"] and len(results["ids"]) > 0:
             documents = results.get("documents")
+            metadatas = results.get("metadatas")
             for i, doc_id in enumerate(results["ids"][0]):
                 metadata = results["metadatas"][0][i] or {}
                 content = metadata.get("content", "")
                 if documents and i < len(documents[0]) and documents[0][i]:
                     content = documents[0][i]
+                elif metadatas and i < len(metadatas[0]) and metadatas[0][i]:
+                    content = str(metadatas[0][i].get("content", ""))
                 output.append({
                     "id": doc_id,
                     "distance": results["distances"][0][i],

@@ -20,7 +20,7 @@ def setup_system(embedding_type="local"):
 
     embedder = LocalEmbedding(embedding_config)
     vector_store = ChromaDBStore(vector_config)
-    processor = DocumentProcessor("recursive", chunking_config, embedder)
+    processor = DocumentProcessor(chunking_config.splitter_type, chunking_config, embedder)
     pipeline = IngestionPipeline(processor, vector_store)
     retriever = SemanticRetriever(embedder, vector_store)
 
@@ -55,12 +55,14 @@ def search_command(args):
     print(f"{'='*60}\n")
 
     for i, result in enumerate(results, 1):
-        source = result["metadata"].get("source", "unknown")
+        metadata = result.get("metadata", {})
+        source = metadata.get("source", "unknown")
         distance = result["distance"]
-        content = result["content"][:100] + "..."
+        content = result.get("content") or metadata.get("content", "")
+        preview = content[:100] + ("..." if len(content) > 100 else "")
 
         print(f"{i}. [{source}] (distance: {distance:.4f})")
-        print(f"   {content}\n")
+        print(f"   {preview}\n")
 
 def main():
     parser = argparse.ArgumentParser(description="Semantic Search System")

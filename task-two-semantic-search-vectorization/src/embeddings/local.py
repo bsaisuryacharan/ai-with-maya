@@ -12,7 +12,10 @@ class LocalEmbedding(EmbeddingProvider):
             raise ValueError("LocalEmbedding requires provider='local'")
         
         self.model = SentenceTransformer(config.model_name)
-        self._embedding_dim = 384  # all-MiniLM-L6-v2 dimension
+        if hasattr(self.model, "get_sentence_embedding_dimension"):
+            self._embedding_dim = int(self.model.get_sentence_embedding_dimension())
+        else:
+            self._embedding_dim = config.embedding_dim
     
     @property
     def embedding_dim(self) -> int:

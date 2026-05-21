@@ -16,7 +16,7 @@ A complete end-to-end semantic search system using local embeddings, vector stor
 ### 1. Install Dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install chromadb sentence-transformers groq python-dotenv
 ```
 
 ### 2. Run Tests
