@@ -12,8 +12,9 @@ class ChromaDBStore(VectorStore):
             raise ValueError("ChromaDBStore requires store_type='chromadb'")
 
         self.client = chromadb.PersistentClient(path=config.path)
+        self.collection_name = config.collection_name
         self.collection = self.client.get_or_create_collection(
-            name="documents",
+            name=self.collection_name,
             metadata={"hnsw:space": "cosine"}
         )
     
@@ -55,8 +56,8 @@ class ChromaDBStore(VectorStore):
     
     def clear(self) -> None:
         """Clear all vectors."""
-        self.client.delete_collection(name="documents")
+        self.client.delete_collection(name=self.collection_name)
         self.collection = self.client.get_or_create_collection(
-            name="documents",
+            name=self.collection_name,
             metadata={"hnsw:space": "cosine"}
         )
