@@ -36,9 +36,6 @@ class RecursiveCharacterChunker(ChunkingStrategy):
                         end = split_at + len(separator)
                         break
 
-            if end <= start:
-                end = min(start + self.chunk_size, text_len)
-
             chunk_text = text[start:end]
             if chunk_text.strip():
                 chunks.append(Chunk(
@@ -50,7 +47,6 @@ class RecursiveCharacterChunker(ChunkingStrategy):
             if end >= text_len:
                 break
 
-            next_start = end - self.overlap if self.overlap > 0 else end
-            start = max(next_start, 0)
+            start = end - self.overlap if self.overlap > 0 else end
 
         return chunks
