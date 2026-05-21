@@ -1,5 +1,4 @@
 from typing import List, Dict, Any
-from src.ingestion.document_loader import DocumentLoader
 from src.ingestion.document_processor import DocumentProcessor
 from src.vector_store.base import VectorStore
 from src.utils.timing import log_timing
