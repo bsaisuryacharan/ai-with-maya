@@ -16,7 +16,13 @@ class IngestionPipeline:
         processed = self.processor.process(text, source)
         
         vectors = [p["embedding"] for p in processed]
-        metadata = [p["metadata"] for p in processed]
+        metadata = [
+            {
+                **p["metadata"],
+                "content": p["content"],
+            }
+            for p in processed
+        ]
         
         ids = self.vector_store.add(vectors, metadata)
         return ids
