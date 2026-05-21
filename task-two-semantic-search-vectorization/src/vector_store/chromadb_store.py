@@ -46,7 +46,7 @@ class ChromaDBStore(VectorStore):
             documents = results.get("documents")
             metadatas = results.get("metadatas")
             for i, doc_id in enumerate(results["ids"][0]):
-                metadata = results["metadatas"][0][i] or {}
+                metadata = metadatas[0][i] if metadatas and i < len(metadatas[0]) else {}
                 content = metadata.get("content", "")
                 if documents and i < len(documents[0]) and documents[0][i]:
                     content = documents[0][i]
